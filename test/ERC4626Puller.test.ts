@@ -178,6 +178,8 @@ describe("ERC4626Puller", () => {
     it("should return the max withdraw amount capped by upTo", async () => {
       const { owner, asset, vault, puller } = await networkHelpers.loadFixture(deployFixture);
 
+      await vault.connect(owner).approve(await puller.getAddress(), MAX_UINT256);
+
       const maxWithdraw = await vault.maxWithdraw(owner.address);
       const upToLarge = 999_999n * 10n ** 18n;
       const result = await puller.maxPullable(await asset.getAddress(), owner.address, upToLarge);
@@ -186,6 +188,16 @@ describe("ERC4626Puller", () => {
       const upToSmall = 10n * 10n ** 18n;
       const result2 = await puller.maxPullable(await asset.getAddress(), owner.address, upToSmall);
       expect(result2).to.equal(upToSmall);
+    });
+
+    it("caps the quote by the vault share allowance", async () => {
+      const { owner, asset, vault, puller } = await networkHelpers.loadFixture(deployFixture);
+      const shareAllowance = 10n * 10n ** 18n;
+
+      await vault.connect(owner).approve(await puller.getAddress(), shareAllowance);
+
+      const quoted = await puller.maxPullable(await asset.getAddress(), owner.address, MAX_UINT256);
+      expect(quoted).to.equal(await vault.previewRedeem(shareAllowance));
     });
   });
 

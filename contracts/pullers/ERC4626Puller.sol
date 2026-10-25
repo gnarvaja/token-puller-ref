@@ -65,6 +65,7 @@ contract ERC4626Puller is BasePuller {
      * @dev Returns the maximum amount of `token` that can be pulled from `owner`,
      * considering:
      * - The owner's vault share balance (via `vault.maxWithdraw(owner)`)
+     * - The vault share allowance granted to this puller
      * - The `upTo` cap
      *
      * This does NOT factor in the caller's pull allowance; the caller should
@@ -75,9 +76,14 @@ contract ERC4626Puller is BasePuller {
             return 0;
         }
 
-        uint256 maxWithdraw = vault.maxWithdraw(owner);
+        uint256 withdrawable = vault.maxWithdraw(owner);
+        uint256 shareAllowance = vault.allowance(owner, address(this));
+        uint256 byShares = shareAllowance == type(uint256).max
+            ? withdrawable
+            : vault.previewRedeem(shareAllowance);
 
-        return maxWithdraw > upTo ? upTo : maxWithdraw;
+        uint256 capped = withdrawable < byShares ? withdrawable : byShares;
+        return capped > upTo ? upTo : capped;
     }
 
     // =============================================================
