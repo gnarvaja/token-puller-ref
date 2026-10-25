@@ -152,6 +152,14 @@ describe("ERC4626Puller", () => {
       ).to.be.revertedWithCustomError(puller, "UnsupportedToken");
     });
 
+    it("reverts on a zero amount", async () => {
+      const { owner, spender, receiver, asset, puller } = await networkHelpers.loadFixture(deployFixture);
+
+      await expect(
+        puller.connect(spender).pullFrom(await asset.getAddress(), owner.address, receiver.address, 0n)
+      ).to.be.revertedWithCustomError(puller, "ZeroAmount");
+    });
+
     it("should not decrement infinite allowance", async () => {
       const { owner, spender, receiver, asset, vault, puller } =
         await networkHelpers.loadFixture(deployFixture);

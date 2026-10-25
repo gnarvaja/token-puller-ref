@@ -56,6 +56,8 @@ abstract contract BasePuller is IPuller, EIP712 {
     error InvalidSignature(address expected, address recovered);
     error PermitFailedAndInsufficientAllowance(uint256 available, uint256 required);
     error TransferToSelf();
+    error ZeroAmount();
+    error DeliveryShortfall(uint256 received, uint256 expected);
 
     // =============================================================
     // Constructor
@@ -209,9 +211,14 @@ abstract contract BasePuller is IPuller, EIP712 {
     // =============================================================
 
     function _executePull(address token, address owner, address to, uint256 amount) internal {
+        if (amount == 0) revert ZeroAmount();
+
         _consumeAllowance(token, owner, msg.sender, amount);
 
+        uint256 beforeBal = IERC20(token).balanceOf(to);
         _sourceTokens(token, owner, to, amount);
+        uint256 received = IERC20(token).balanceOf(to) - beforeBal;
+        if (received != amount) revert DeliveryShortfall(received, amount);
 
         emit TokensPulled(token, owner, msg.sender, to, amount);
     }
